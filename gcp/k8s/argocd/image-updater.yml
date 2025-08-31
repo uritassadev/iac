@@ -1,0 +1,54 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argocd-image-updater
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argocd-image-updater
+    targetRevision: 0.12.0
+    helm:
+      values: |
+        serviceAccount:
+          create: true
+          name: argocd-image-updater
+          annotations:
+            iam.gke.io/gcp-service-account: "gke-apps@ uri-labs-465111.iam.gserviceaccount.com"
+        config:
+          registries:
+          - name: gcr
+            prefix: us-central1-docker.pkg.dev
+            api_url: https://us-central1-docker.pkg.dev
+            credentials: ext:/scripts/gcr-auth.sh
+            credsexpire: 30m
+          logLevel: debug
+        resources:
+          requests:
+            cpu: 10m
+            memory: 25Mi
+        authScripts:
+          enabled: true
+          scripts:
+            gcr-auth.sh: |
+              #!/bin/sh
+              TOKEN=$(wget -qO- --header='Metadata-Flavor: Google' \
+                'http://metadata.google.internal/computeMetadata/v1/instance/service-accounts/default/token' \
+                | sed -n 's/.*"access_token":"\([^"]*\)".*/\1/p')
+              
+              if [ -z "$TOKEN" ]; then
+                echo "Failed to fetch access token" >&2
+                exit 1
+              fi
+              
+              echo "oauth2accesstoken:$TOKEN"

@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflare-tunnel
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tools
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  source:
+    repoURL: https://cloudflare.github.io/helm-charts
+    chart: cloudflare-tunnel-remote
+    targetRevision: 0.1.2
+    helm:
+      values: |
+        replicaCount: 1
+        resources:
+          requests:
+            cpu: 100m
+            memory: 250Mi 
+        cloudflare:
+          tunnel_token: ""

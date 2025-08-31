@@ -1,0 +1,35 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: external-dns
+  namespace: argocd
+spec:
+  project: default
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: tools
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+  source:
+    repoURL: https://charts.bitnami.com/bitnami
+    chart: external-dns
+    targetRevision: 7.0.0
+    helm:
+      values: |
+        resources:
+          requests:
+            cpu: "16m"
+            memory: "64Mi"
+          limits:
+            cpu: "32m"
+            memory: "128Mi"
+        provider: cloudflare
+        # Restrict external-dns to only manage this domain
+        domainFilters:
+          - ictbit-labs.com
+        cloudflare:
+          apiToken: "${CLOUDFLARE_API_TOKEN}"
+          secretName: cloudflare-api-token
+          proxied: false
